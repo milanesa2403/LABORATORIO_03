@@ -8,10 +8,8 @@ terraform {
 }
 
 provider "docker" {
-  # Conexión local al daemon de Docker
 }
 
-# --- DESCARGA DE IMÁGENES DESDE DOCKER HUB ---
 
 resource "docker_image" "nginx" {
   name         = "nginx:alpine"
@@ -28,7 +26,6 @@ resource "docker_image" "postgres" {
   keep_locally = true
 }
 
-# --- REDES ---
 resource "docker_network" "dev_network" {
   name = "dev-network"
 }
@@ -37,7 +34,6 @@ resource "docker_network" "qa_network" {
   name = "qa-network"
 }
 
-# --- VOLÚMENES PARA PERSISTENCIA ---
 resource "docker_volume" "bd_dev_data" {
   name = "bd-dev-data"
 }
@@ -46,9 +42,6 @@ resource "docker_volume" "bd_qa_data" {
   name = "bd-qa-data"
 }
 
-# ==========================================
-# AMBIENTE DEV (12541)
-# ==========================================
 
 resource "docker_container" "bd_dev" {
   name    = "bd-dev"
@@ -83,6 +76,13 @@ resource "docker_container" "api_dev" {
     internal = 3000
     external = var.dev_ports.backend
   }
+  env = [
+    "DB_HOST=bd-dev",
+    "DB_PORT=5432",
+    "DB_USER=postgres",
+    "DB_PASSWORD=secret",
+    "DB_NAME=dev_db"
+  ]
   depends_on = [docker_container.bd_dev]
 }
 
@@ -100,9 +100,6 @@ resource "docker_container" "web_dev" {
   depends_on = [docker_container.api_dev]
 }
 
-# ==========================================
-# AMBIENTE QA
-# ==========================================
 
 resource "docker_container" "bd_qa" {
   name    = "bd-qa"
@@ -137,6 +134,13 @@ resource "docker_container" "api_qa" {
     internal = 3000
     external = var.qa_ports.backend
   }
+  env = [
+    "DB_HOST=bd-qa",
+    "DB_PORT=5432",
+    "DB_USER=postgres",
+    "DB_PASSWORD=secret",
+    "DB_NAME=qa_db"
+  ]
   depends_on = [docker_container.bd_qa]
 }
 
@@ -152,4 +156,30 @@ resource "docker_container" "web_qa" {
     external = var.qa_ports.frontend
   }
   depends_on = [docker_container.api_qa]
+}
+
+variable "dev_ports" {
+  type = object({
+    frontend = number
+    backend  = number
+    database = number
+  })
+  default = {
+    frontend = 4001
+    backend  = 4002
+    database = 4003
+  }
+}
+
+variable "qa_ports" {
+  type = object({
+    frontend = number
+    backend  = number
+    database = number
+  })
+  default = {
+    frontend = 5001
+    backend  = 5002
+    database = 5003
+  }
 }
